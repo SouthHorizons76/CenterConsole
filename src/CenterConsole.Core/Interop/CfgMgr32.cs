@@ -4,7 +4,7 @@ namespace CenterConsole.Core.Interop;
 
 /// <summary>
 /// Thin wrapper over cfgmgr32.dll, used only to read live device node status
-/// (SetupApi.SetDeviceEnabled is the path used to actually change it — same as Device Manager).
+/// (SetupApi.SetDeviceEnabled is the path used to actually change it, same as Device Manager).
 /// </summary>
 internal static class CfgMgr32
 {

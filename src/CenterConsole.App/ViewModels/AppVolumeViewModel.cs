@@ -56,7 +56,10 @@ public sealed partial class AppVolumeViewModel : ObservableObject, IDisposable
         volumeDownHotkey = settings.AppVolumeDownHotkey;
         stepPercent = settings.AppVolumeStepPercent;
 
-        _appVolumeService.SessionsChanged += (_, _) => Refresh();
+        // OnSessionCreated fires on a COM callback thread, not the UI thread. Refresh() mutates
+        // Sessions, an ObservableCollection bound to WPF controls, so it must run on the Dispatcher.
+        Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+        _appVolumeService.SessionsChanged += (_, _) => dispatcher.BeginInvoke(Refresh);
 
         // Session-removal notifications from Core Audio are unreliable on their own, so this timer
         // is the backstop that drops rows for processes that have exited (see plan: AppVolumeService).

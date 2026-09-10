@@ -26,6 +26,39 @@ public partial class App : Application
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
+        // Startup runs before the Dispatcher's message loop is pumping, so an exception here would
+        // otherwise bubble past DispatcherUnhandledException straight to an invisible process exit.
+        // This is the only way to guarantee the user sees why the app died instead of silent nothing.
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            ShowFatalError(args.ExceptionObject as Exception, "Unhandled exception");
+        DispatcherUnhandledException += (_, args) =>
+        {
+            ShowFatalError(args.Exception, "Unhandled UI-thread exception");
+            args.Handled = true;
+        };
+
+        try
+        {
+            StartServicesAndUi();
+        }
+        catch (Exception ex)
+        {
+            ShowFatalError(ex, "Startup failed");
+            Shutdown(-1);
+        }
+    }
+
+    private static void ShowFatalError(Exception? ex, string title)
+    {
+        MessageBox.Show(
+            ex?.ToString() ?? "(no exception details available)",
+            $"CenterConsole: {title}",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
+    }
+
+    private void StartServicesAndUi()
+    {
         _settingsService = new SettingsService();
         _settings = _settingsService.Load();
 
@@ -39,7 +72,7 @@ public partial class App : Application
             _microphoneService, _cameraBlockService, _appVolumeService, _elevationService, _settings, SaveSettings);
 
         _mainWindow = new MainWindow(_mainViewModel, _hotkeyService);
-        // Forces HWND creation (and MainWindow.OnSourceInitialized) without calling Show() — the app
+        // Forces HWND creation (and MainWindow.OnSourceInitialized) without calling Show(). The app
         // starts tray-only, but hotkeys need a real window handle to register against.
         new WindowInteropHelper(_mainWindow).EnsureHandle();
 
@@ -52,6 +85,10 @@ public partial class App : Application
 
         CreateTaskbarIcon();
         UpdateTrayIcon(_mainViewModel.Microphone.IsMuted);
+
+        // The icon is never parented to a shown Window, so its normal Loaded-triggered registration
+        // never fires. ForceCreate() is H.NotifyIcon's documented escape hatch for windowless apps.
+        _taskbarIcon.ForceCreate();
     }
 
     private void RegisterHotkeys()
@@ -133,7 +170,7 @@ public partial class App : Application
             Text = muted ? "🔇" : "🎤", // muted-speaker vs studio-microphone emoji
             FontSize = 96,
         };
-        _taskbarIcon.ToolTipText = muted ? "CenterConsole — Microphone Muted" : "CenterConsole — Microphone Live";
+        _taskbarIcon.ToolTipText = muted ? "CenterConsole: Microphone Muted" : "CenterConsole: Microphone Live";
     }
 
     private void ShowMainWindow()

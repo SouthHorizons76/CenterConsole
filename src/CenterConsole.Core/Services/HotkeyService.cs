@@ -5,7 +5,7 @@ namespace CenterConsole.Core.Services;
 
 public interface IHotkeyService
 {
-    /// <summary>Must be called once with a real window handle before any Register/Unregister call —
+    /// <summary>Must be called once with a real window handle before any Register/Unregister call:
     /// RegisterHotKey requires a window owned by the calling thread to deliver WM_HOTKEY to.</summary>
     void AttachToWindow(IntPtr windowHandle);
 

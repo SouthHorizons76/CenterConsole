@@ -68,7 +68,7 @@ public sealed partial class CameraBlockViewModel : ObservableObject
         }
     }
 
-    /// <summary>Re-applies the configured blocks — called on startup when AutoApplyOnStartup is set.</summary>
+    /// <summary>Re-applies the configured blocks. Called on startup when AutoApplyOnStartup is set.</summary>
     public void ApplyConfiguredBlocks()
     {
         if (!IsElevated)
@@ -84,7 +84,7 @@ public sealed partial class CameraBlockViewModel : ObservableObject
     {
         if (!IsElevated)
         {
-            row.IsBlocked = !row.IsBlocked; // revert — can't apply without elevation
+            row.IsBlocked = !row.IsBlocked; // revert: can't apply without elevation
             return;
         }
 

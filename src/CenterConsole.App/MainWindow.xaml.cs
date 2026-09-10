@@ -26,9 +26,13 @@ public partial class MainWindow : Window
     {
         base.OnSourceInitialized(e);
 
-        var source = (HwndSource)PresentationSource.FromVisual(this)!;
+        // PresentationSource.FromVisual(this) can still be null here when the handle was created via
+        // WindowInteropHelper.EnsureHandle() (as opposed to Show()). Going via the raw HWND is reliable
+        // in both cases.
+        IntPtr hwnd = new WindowInteropHelper(this).Handle;
+        HwndSource source = HwndSource.FromHwnd(hwnd)!;
         source.AddHook(WndProc);
-        _hotkeyService.AttachToWindow(source.Handle);
+        _hotkeyService.AttachToWindow(hwnd);
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -44,7 +48,7 @@ public partial class MainWindow : Window
         if (IsExiting)
             return;
 
-        // Hide to tray instead of exiting — the HWND (and its registered hotkeys) stays alive.
+        // Hide to tray instead of exiting. The HWND (and its registered hotkeys) stays alive.
         e.Cancel = true;
         Hide();
     }

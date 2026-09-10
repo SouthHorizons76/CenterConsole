@@ -32,7 +32,7 @@ internal static class User32Hotkey
             return $"VK_0x{virtualKey:X2}";
 
         // Bit 24 of lParam marks "extended" keys (arrows, Home/End/Insert/Delete, numpad Enter,
-        // right-hand Ctrl/Alt) — without it GetKeyNameText returns the wrong label for these.
+        // right-hand Ctrl/Alt). Without it, GetKeyNameText returns the wrong label for these.
         bool isExtended = virtualKey is 0x21 or 0x22 or 0x23 or 0x24 // PgUp/PgDn/End/Home
             or 0x25 or 0x26 or 0x27 or 0x28                         // Left/Up/Right/Down
             or 0x2D or 0x2E or 0x2F                                 // Insert/Delete/Help

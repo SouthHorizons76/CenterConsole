@@ -11,7 +11,7 @@ public interface ISettingsService
 
 /// <summary>
 /// JSON-backed settings store. The base directory is injectable so tests can point it at a temp
-/// folder instead of the real %AppData% — production code should use the parameterless constructor.
+/// folder instead of the real %AppData%. Production code should use the parameterless constructor.
 /// </summary>
 public sealed class SettingsService : ISettingsService
 {
@@ -43,7 +43,7 @@ public sealed class SettingsService : ISettingsService
         }
         catch
         {
-            // Missing, corrupt, or unreadable settings file — never crash the app over this.
+            // Missing, corrupt, or unreadable settings file: never crash the app over this.
             return new AppSettings();
         }
     }

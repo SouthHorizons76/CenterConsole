@@ -8,7 +8,7 @@ public interface ICameraBlockService
     /// <summary>Enumerates camera/imaging devices present on the system (GUID_DEVCLASS_CAMERA + GUID_DEVCLASS_IMAGE).</summary>
     IReadOnlyList<CameraDeviceInfo> GetCameraDevices();
 
-    /// <summary>Disables (blocks) the device at the driver level — the same mechanism Device Manager uses.</summary>
+    /// <summary>Disables (blocks) the device at the driver level, the same mechanism Device Manager uses.</summary>
     bool Block(string deviceInstanceId);
 
     /// <summary>Re-enables a previously blocked device.</summary>
@@ -19,7 +19,7 @@ public interface ICameraBlockService
 
 /// <summary>
 /// Disables/enables camera hardware at the device-node level via SetupAPI, so the block applies to
-/// every consumer (Win32 apps via DirectShow/Media Foundation and UWP apps via Frame Server alike) —
+/// every consumer (Win32 apps via DirectShow/Media Foundation and UWP apps via Frame Server alike),
 /// unlike the Windows privacy-toggle registry key, which only restricts UWP/Store apps.
 /// Requires the process to be running elevated; SetupDiCallClassInstaller fails otherwise.
 /// </summary>
