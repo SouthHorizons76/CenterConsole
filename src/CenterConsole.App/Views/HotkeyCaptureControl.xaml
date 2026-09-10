@@ -1,0 +1,10 @@
+<UserControl x:Class="CenterConsole.App.Views.HotkeyCaptureControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="150">
+    <Button x:Name="CaptureButton"
+            Padding="8,4"
+            Click="OnClick"
+            PreviewKeyDown="OnPreviewKeyDown"
+            ToolTip="Click, then press the desired key combination"/>
+</UserControl>
