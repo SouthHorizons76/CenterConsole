@@ -20,6 +20,9 @@ public partial class MainWindow : Window
         _viewModel = viewModel;
         _hotkeyService = hotkeyService;
         DataContext = _viewModel;
+
+        Version? version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        VersionLabel.Text = version is null ? string.Empty : $"v{version.ToString(3)}";
     }
 
     protected override void OnSourceInitialized(EventArgs e)

@@ -23,20 +23,26 @@ public sealed class AppVolumeService : IAppVolumeService
     private readonly MMDeviceEnumerator _enumerator = new();
     private readonly AudioSessionManager.SessionCreatedDelegate _sessionCreatedHandler;
 
+    // NAudio's OnSessionCreated notification only keeps firing while the MMDevice (and the
+    // AudioSessionManager it owns) stays alive; disposing it right after subscribing - as this used
+    // to do - silently stops new sessions (e.g. Spotify starting playback) from being reported until
+    // the next poll. Keeping it as a field for the service's lifetime is what makes the notification
+    // reliable, which in turn is what lets a remembered target reattach the instant its app makes sound.
+    private MMDevice? _watchedRenderDevice;
+
     public event EventHandler? SessionsChanged;
 
     public AppVolumeService()
     {
         _sessionCreatedHandler = (_, _) => SessionsChanged?.Invoke(this, EventArgs.Empty);
-        TryGetDefaultRenderDevice()?.Dispose(); // touch once to fail fast if no render device at all
         SubscribeToSessionCreation();
     }
 
     private void SubscribeToSessionCreation()
     {
-        using var device = TryGetDefaultRenderDevice();
-        if (device is not null)
-            device.AudioSessionManager.OnSessionCreated += _sessionCreatedHandler;
+        _watchedRenderDevice = TryGetDefaultRenderDevice();
+        if (_watchedRenderDevice is not null)
+            _watchedRenderDevice.AudioSessionManager.OnSessionCreated += _sessionCreatedHandler;
     }
 
     public IReadOnlyList<AppVolumeTarget> GetActiveSessions()
@@ -134,9 +140,12 @@ public sealed class AppVolumeService : IAppVolumeService
 
     public void Dispose()
     {
-        using var device = TryGetDefaultRenderDevice();
-        if (device is not null)
-            device.AudioSessionManager.OnSessionCreated -= _sessionCreatedHandler;
+        if (_watchedRenderDevice is not null)
+        {
+            _watchedRenderDevice.AudioSessionManager.OnSessionCreated -= _sessionCreatedHandler;
+            _watchedRenderDevice.Dispose();
+            _watchedRenderDevice = null;
+        }
 
         _enumerator.Dispose();
     }

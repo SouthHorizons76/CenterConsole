@@ -9,6 +9,7 @@ public sealed class AppSettings
         Modifiers = HotkeyModifiers.Control | HotkeyModifiers.Alt,
         VirtualKey = 0x4D, // 'M'
     };
+    public bool MuteMicrophoneOnStartup { get; set; }
 
     public List<string> SelectedCameraDeviceInstanceIds { get; set; } = new();
     public bool CameraBlockAutoApplyOnStartup { get; set; } = true;

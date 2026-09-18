@@ -9,8 +9,22 @@
         ShowInTaskbar="True">
     <Window.Resources>
         <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
+        <conv:BoolToInactiveOpacityConverter x:Key="BoolToInactiveOpacity"/>
     </Window.Resources>
+    <DockPanel>
+    <TextBlock x:Name="VersionLabel" DockPanel.Dock="Bottom"
+               HorizontalAlignment="Right" Margin="0,0,10,4"
+               Foreground="Gray" FontSize="11"/>
     <TabControl Margin="8">
+
+        <TabItem Header="General">
+            <StackPanel Margin="16">
+                <CheckBox Content="Launch CenterConsole when Windows starts"
+                          IsChecked="{Binding RunAtStartup}"/>
+                <TextBlock Margin="24,4,0,0" Foreground="Gray" TextWrapping="Wrap" MaxWidth="450" HorizontalAlignment="Left"
+                           Text="Registered as a scheduled task that runs elevated at logon, so it starts without a UAC prompt every time."/>
+            </StackPanel>
+        </TabItem>
 
         <TabItem Header="Microphone">
             <StackPanel Margin="16">
@@ -24,6 +38,12 @@
                     <CheckBox Content="Muted"
                               IsChecked="{Binding Microphone.IsMuted, Mode=OneWay}"
                               Click="OnMuteCheckboxClick"
+                              VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <CheckBox Content="Mute automatically on launch"
+                              IsChecked="{Binding Microphone.MuteOnStartup}"
                               VerticalAlignment="Center"/>
                 </StackPanel>
 
@@ -87,7 +107,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="0,8">
-                                <Grid>
+                                <Grid Opacity="{Binding IsLive, Converter={StaticResource BoolToInactiveOpacity}}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="60"/>
                                         <ColumnDefinition Width="140"/>
@@ -97,12 +117,18 @@
                                     </Grid.ColumnDefinitions>
                                     <RadioButton GroupName="VolumeTarget" Content="Target" VerticalAlignment="Center"
                                                  IsChecked="{Binding IsHotkeyTarget}" Grid.Column="0"/>
-                                    <TextBlock Text="{Binding ProcessName}" VerticalAlignment="Center" Grid.Column="1"/>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Grid.Column="1">
+                                        <TextBlock Text="{Binding ProcessName}"/>
+                                        <TextBlock Text=" (no audio yet)" FontStyle="Italic"
+                                                   Visibility="{Binding IsLive, Converter={StaticResource InverseBoolToVisibility}}"/>
+                                    </StackPanel>
                                     <Slider Minimum="0" Maximum="100" Value="{Binding VolumePercent}"
+                                            IsEnabled="{Binding IsLive}"
                                             VerticalAlignment="Center" Grid.Column="2"/>
                                     <TextBlock Text="{Binding VolumePercent, StringFormat={}{0:0}%}"
                                                VerticalAlignment="Center" Grid.Column="3"/>
                                     <CheckBox Content="Mute" IsChecked="{Binding IsMuted}"
+                                              IsEnabled="{Binding IsLive}"
                                               VerticalAlignment="Center" Grid.Column="4"/>
                                 </Grid>
                             </Border>
@@ -113,4 +139,5 @@
         </TabItem>
 
     </TabControl>
+    </DockPanel>
 </Window>

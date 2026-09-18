@@ -28,6 +28,10 @@ public sealed partial class CameraBlockViewModel : ObservableObject
 
     public ObservableCollection<CameraDeviceRow> Devices { get; } = new();
 
+    /// <summary>Raised whenever a device's block state actually changes (not on revert-on-failure), so the
+    /// app icon can be kept in sync.</summary>
+    public event EventHandler? BlockStateChanged;
+
     [ObservableProperty]
     private bool isElevated;
 
@@ -78,6 +82,7 @@ public sealed partial class CameraBlockViewModel : ObservableObject
             _cameraBlockService.Block(id);
 
         Refresh();
+        BlockStateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnDeviceBlockToggled(CameraDeviceRow row)
@@ -109,6 +114,7 @@ public sealed partial class CameraBlockViewModel : ObservableObject
         }
 
         _saveSettings();
+        BlockStateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     partial void OnAutoApplyOnStartupChanged(bool value)

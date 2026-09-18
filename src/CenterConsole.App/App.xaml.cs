@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -16,10 +17,12 @@ public partial class App : Application
     private ICameraBlockService _cameraBlockService = null!;
     private IAppVolumeService _appVolumeService = null!;
     private IElevationService _elevationService = null!;
+    private IStartupService _startupService = null!;
     private IHotkeyService _hotkeyService = null!;
     private MainWindow _mainWindow = null!;
     private MainViewModel _mainViewModel = null!;
     private TaskbarIcon _taskbarIcon = null!;
+    private System.Drawing.Icon? _currentTrayIcon;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -66,10 +69,16 @@ public partial class App : Application
         _microphoneService = new MicrophoneService();
         _cameraBlockService = new CameraBlockService();
         _appVolumeService = new AppVolumeService();
+        _startupService = new StartupService();
         _hotkeyService = new HotkeyService();
 
         _mainViewModel = new MainViewModel(
-            _microphoneService, _cameraBlockService, _appVolumeService, _elevationService, _settings, SaveSettings);
+            _microphoneService, _cameraBlockService, _appVolumeService, _elevationService, _startupService,
+            _settings, SaveSettings);
+
+        // Reconciles the scheduled task with the persisted setting on every launch (e.g. if the task
+        // was removed externally, or this is a fresh settings.json from a copied install).
+        _startupService.SetEnabled(_settings.RunAtStartup);
 
         _mainWindow = new MainWindow(_mainViewModel, _hotkeyService);
         // Forces HWND creation (and MainWindow.OnSourceInitialized) without calling Show(). The app
@@ -78,13 +87,18 @@ public partial class App : Application
 
         RegisterHotkeys();
         _hotkeyService.HotkeyPressed += OnHotkeyPressed;
-        _microphoneService.MuteStateChanged += (_, muted) => UpdateTrayIcon(muted);
+
+        // Must exist before anything below can raise BlockStateChanged/MuteStateChanged - both are
+        // wired straight to RefreshIcon(), which touches _taskbarIcon.
+        CreateTaskbarIcon();
+
+        _microphoneService.MuteStateChanged += (_, _) => RefreshIcon();
+        _mainViewModel.CameraBlock.BlockStateChanged += (_, _) => RefreshIcon();
 
         if (_settings.CameraBlockAutoApplyOnStartup)
             _mainViewModel.CameraBlock.ApplyConfiguredBlocks();
 
-        CreateTaskbarIcon();
-        UpdateTrayIcon(_mainViewModel.Microphone.IsMuted);
+        RefreshIcon();
 
         // The icon is never parented to a shown Window, so its normal Loaded-triggered registration
         // never fires. ForceCreate() is H.NotifyIcon's documented escape hatch for windowless apps.
@@ -104,7 +118,7 @@ public partial class App : Application
         {
             case "MicMute":
                 _mainViewModel.Microphone.ToggleMute();
-                UpdateTrayIcon(_mainViewModel.Microphone.IsMuted);
+                RefreshIcon();
                 break;
 
             case "VolumeUp":
@@ -130,7 +144,7 @@ public partial class App : Application
         muteItem.Click += (_, _) =>
         {
             _mainViewModel.Microphone.ToggleMute();
-            UpdateTrayIcon(_mainViewModel.Microphone.IsMuted);
+            RefreshIcon();
         };
 
         var settingsItem = new MenuItem { Header = "Open Settings" };
@@ -161,16 +175,28 @@ public partial class App : Application
         contextMenu.Items.Add(exitItem);
 
         _taskbarIcon.ContextMenu = contextMenu;
+
+        // Left double-click on the tray icon opens Settings, mirroring the convention used by most
+        // tray apps (single click just shows the context/status; right-click already opens the menu).
+        _taskbarIcon.TrayLeftMouseDoubleClick += (_, _) => ShowMainWindow();
     }
 
-    private void UpdateTrayIcon(bool muted)
+    private void RefreshIcon()
     {
-        _taskbarIcon.IconSource = new GeneratedIconSource
-        {
-            Text = muted ? "🔇" : "🎤", // muted-speaker vs studio-microphone emoji
-            FontSize = 96,
-        };
-        _taskbarIcon.ToolTipText = muted ? "CenterConsole: Microphone Muted" : "CenterConsole: Microphone Live";
+        bool muted = _mainViewModel.Microphone.IsMuted;
+        bool cameraBlocked = _mainViewModel.CameraBlock.Devices.Any(d => d.IsBlocked);
+
+        var icons = AppIconRenderer.Render(muted, cameraBlocked);
+        _mainWindow.Icon = icons.WindowIcon;
+        _taskbarIcon.Icon = icons.TrayIcon;
+
+        // TaskbarIcon.Icon doesn't take ownership of the handle, so the previous one (a native GDI
+        // resource) is only safe to dispose once the new one has taken its place.
+        _currentTrayIcon?.Dispose();
+        _currentTrayIcon = icons.TrayIcon;
+
+        _taskbarIcon.ToolTipText =
+            $"CenterConsole: Microphone {(muted ? "Muted" : "Live")}, Camera {(cameraBlocked ? "Blocked" : "Enabled")}";
     }
 
     private void ShowMainWindow()
@@ -185,6 +211,7 @@ public partial class App : Application
         _hotkeyService.UnregisterAll();
         SaveSettings();
         _taskbarIcon.Dispose();
+        _currentTrayIcon?.Dispose();
         _microphoneService.Dispose();
         _appVolumeService.Dispose();
         _mainWindow.Close();

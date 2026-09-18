@@ -22,14 +22,31 @@ public sealed partial class MicrophoneViewModel : ObservableObject
     [ObservableProperty]
     private HotkeyBinding muteHotkey;
 
+    [ObservableProperty]
+    private bool muteOnStartup;
+
     public MicrophoneViewModel(IMicrophoneService microphoneService, AppSettings settings, Action saveSettings)
     {
         _microphoneService = microphoneService;
         _settings = settings;
         _saveSettings = saveSettings;
         muteHotkey = settings.MicMuteHotkey;
+        muteOnStartup = settings.MuteMicrophoneOnStartup;
+
+        // Keeps IsMuted mirroring the live hardware state no matter what changes it - our own
+        // ToggleMute, the hotkey, the tray menu, or the user muting/unmuting via the Windows Sound
+        // Control Panel. Nothing here is ever read from a locally cached flag, which is what avoids
+        // the classic reference-app bug where Windows remembers the mic as muted across a reboot but
+        // the app's own toggle still thinks it's unmuted and its mute button stops doing anything.
+        _microphoneService.MuteStateChanged += (_, muted) => IsMuted = muted;
 
         Refresh();
+
+        if (muteOnStartup && SelectedDevice is not null && !IsMuted)
+        {
+            _microphoneService.SetMuted(SelectedDevice.Id, true);
+            RefreshMuteState();
+        }
     }
 
     public void Refresh()
@@ -79,6 +96,12 @@ public sealed partial class MicrophoneViewModel : ObservableObject
     {
         MuteHotkey = binding;
         _settings.MicMuteHotkey = binding;
+        _saveSettings();
+    }
+
+    partial void OnMuteOnStartupChanged(bool value)
+    {
+        _settings.MuteMicrophoneOnStartup = value;
         _saveSettings();
     }
 }

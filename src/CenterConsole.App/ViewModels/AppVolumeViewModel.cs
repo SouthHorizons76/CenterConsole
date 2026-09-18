@@ -19,11 +19,18 @@ public sealed partial class AppVolumeRow : ObservableObject
     [ObservableProperty]
     private bool isHotkeyTarget;
 
-    public AppVolumeRow(string processName, double volumePercent, bool isMuted)
+    /// <summary>False for a remembered target that has no active audio session right now (e.g. Spotify
+    /// hasn't started playing yet this session) - kept visible and selected instead of disappearing, so
+    /// the user never has to reselect it once it does make sound.</summary>
+    [ObservableProperty]
+    private bool isLive;
+
+    public AppVolumeRow(string processName, double volumePercent, bool isMuted, bool isLive = true)
     {
         ProcessName = processName;
         this.volumePercent = volumePercent;
         this.isMuted = isMuted;
+        this.isLive = isLive;
     }
 }
 
@@ -74,11 +81,21 @@ public sealed partial class AppVolumeViewModel : ObservableObject, IDisposable
     {
         var live = _appVolumeService.GetActiveSessions();
         var liveNames = live.Select(t => t.ProcessName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        string? rememberedTarget = _settings.SelectedTargetAppProcessName;
 
         for (int i = Sessions.Count - 1; i >= 0; i--)
         {
-            if (!liveNames.Contains(Sessions[i].ProcessName))
+            var existingRow = Sessions[i];
+            bool isLive = liveNames.Contains(existingRow.ProcessName);
+            bool isRememberedTarget = string.Equals(existingRow.ProcessName, rememberedTarget, StringComparison.OrdinalIgnoreCase);
+
+            // A row for a process with no active session is normally dropped, except the remembered
+            // hotkey target: keeping it visible (as a non-live placeholder) is what lets the user see
+            // it's still selected instead of it silently vanishing until the app makes sound again.
+            if (!isLive && !isRememberedTarget)
                 Sessions.RemoveAt(i);
+            else
+                existingRow.IsLive = isLive;
         }
 
         foreach (AppVolumeTarget target in live)
@@ -88,7 +105,7 @@ public sealed partial class AppVolumeViewModel : ObservableObject, IDisposable
             {
                 row = new AppVolumeRow(target.ProcessName, target.Volume * 100.0, target.IsMuted)
                 {
-                    IsHotkeyTarget = string.Equals(target.ProcessName, _settings.SelectedTargetAppProcessName, StringComparison.OrdinalIgnoreCase),
+                    IsHotkeyTarget = string.Equals(target.ProcessName, rememberedTarget, StringComparison.OrdinalIgnoreCase),
                 };
                 row.PropertyChanged += OnRowPropertyChanged;
                 Sessions.Add(row);
@@ -100,6 +117,16 @@ public sealed partial class AppVolumeViewModel : ObservableObject, IDisposable
                 row.IsMuted = target.IsMuted;
                 _suppressVolumeCallback = false;
             }
+        }
+
+        if (rememberedTarget is not null && !Sessions.Any(r => string.Equals(r.ProcessName, rememberedTarget, StringComparison.OrdinalIgnoreCase)))
+        {
+            var placeholder = new AppVolumeRow(rememberedTarget, volumePercent: 100, isMuted: false, isLive: false)
+            {
+                IsHotkeyTarget = true,
+            };
+            placeholder.PropertyChanged += OnRowPropertyChanged;
+            Sessions.Add(placeholder);
         }
     }
 
