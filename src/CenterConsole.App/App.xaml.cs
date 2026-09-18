@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -102,6 +103,31 @@ public partial class App : Application
 
         // The icon is never parented to a shown Window, so its normal Loaded-triggered registration
         // never fires. ForceCreate() is H.NotifyIcon's documented escape hatch for windowless apps.
+        ForceCreateTaskbarIconWithRetry();
+    }
+
+    private void ForceCreateTaskbarIconWithRetry()
+    {
+        // Launched via the logon scheduled task, CenterConsole can start running before Explorer has
+        // finished creating the shell's tray notification window - ForceCreate() throws
+        // InvalidOperationException in that narrow window. Retrying briefly rides out the race instead
+        // of crashing before the app ever gets a chance to show its icon.
+        const int maxAttempts = 20;
+        const int retryDelayMs = 500;
+
+        for (int attempt = 1; attempt < maxAttempts; attempt++)
+        {
+            try
+            {
+                _taskbarIcon.ForceCreate();
+                return;
+            }
+            catch (InvalidOperationException)
+            {
+                Thread.Sleep(retryDelayMs);
+            }
+        }
+
         _taskbarIcon.ForceCreate();
     }
 
