@@ -38,7 +38,10 @@ public sealed partial class MicrophoneViewModel : ObservableObject
         // Control Panel. Nothing here is ever read from a locally cached flag, which is what avoids
         // the classic reference-app bug where Windows remembers the mic as muted across a reboot but
         // the app's own toggle still thinks it's unmuted and its mute button stops doing anything.
-        _microphoneService.MuteStateChanged += (_, muted) => IsMuted = muted;
+        // The notification arrives on an NAudio/COM worker thread; IsMuted drives the tray icon via
+        // PropertyChanged, and WPF/GDI objects must only be touched from the UI thread.
+        var dispatcher = System.Windows.Application.Current.Dispatcher;
+        _microphoneService.MuteStateChanged += (_, muted) => dispatcher.BeginInvoke(() => IsMuted = muted);
 
         Refresh();
 

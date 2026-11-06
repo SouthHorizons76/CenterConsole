@@ -138,6 +138,29 @@
             </DockPanel>
         </TabItem>
 
+        <TabItem Header="Tarkov">
+            <StackPanel Margin="16">
+                <CheckBox Content="Notify me when Escape from Tarkov finds a match"
+                          IsChecked="{Binding Tarkov.NotificationsEnabled}"/>
+                <CheckBox Content="Play a sound" Margin="24,8,0,0"
+                          IsChecked="{Binding Tarkov.PlaySound}"
+                          IsEnabled="{Binding Tarkov.NotificationsEnabled}"/>
+                <Button Content="Send test notification" Margin="24,12,0,0" Padding="10,2"
+                        HorizontalAlignment="Left"
+                        Click="OnTestTarkovNotificationClick"/>
+
+                <TextBlock Text="Logs folder" FontWeight="Bold" Margin="0,16,0,4"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Tarkov.StatusText}" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" MaxWidth="420"/>
+                    <Button Content="Browse..." Margin="12,0,0,0" Padding="10,2"
+                            Click="OnBrowseTarkovLogsClick"/>
+                </StackPanel>
+                <TextBlock Margin="0,8,0,0" Foreground="Gray" TextWrapping="Wrap" MaxWidth="450" HorizontalAlignment="Left"
+                           Text="Detected automatically from the BSG launcher install. To find it manually: BsgLauncher, Game Settings, Logs."/>
+            </StackPanel>
+        </TabItem>
+
     </TabControl>
     </DockPanel>
 </Window>

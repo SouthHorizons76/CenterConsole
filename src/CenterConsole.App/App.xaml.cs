@@ -1,4 +1,6 @@
+using System.IO;
 using System.Linq;
+using System.Media;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,6 +9,7 @@ using CenterConsole.App.ViewModels;
 using CenterConsole.Core.Models;
 using CenterConsole.Core.Services;
 using H.NotifyIcon;
+using H.NotifyIcon.Core;
 
 namespace CenterConsole.App;
 
@@ -20,6 +23,9 @@ public partial class App : Application
     private IElevationService _elevationService = null!;
     private IStartupService _startupService = null!;
     private IHotkeyService _hotkeyService = null!;
+    private ITarkovMatchWatcher _tarkovMatchWatcher = null!;
+    private DateTime _lastMatchNotificationUtc = DateTime.MinValue;
+    private SoundPlayer? _matchFoundSound;
     private MainWindow _mainWindow = null!;
     private MainViewModel _mainViewModel = null!;
     private TaskbarIcon _taskbarIcon = null!;
@@ -72,10 +78,11 @@ public partial class App : Application
         _appVolumeService = new AppVolumeService();
         _startupService = new StartupService();
         _hotkeyService = new HotkeyService();
+        _tarkovMatchWatcher = new TarkovMatchWatcher();
 
         _mainViewModel = new MainViewModel(
             _microphoneService, _cameraBlockService, _appVolumeService, _elevationService, _startupService,
-            _settings, SaveSettings);
+            _tarkovMatchWatcher, _settings, SaveSettings);
 
         // Reconciles the scheduled task with the persisted setting on every launch (e.g. if the task
         // was removed externally, or this is a fresh settings.json from a copied install).
@@ -89,12 +96,20 @@ public partial class App : Application
         RegisterHotkeys();
         _hotkeyService.HotkeyPressed += OnHotkeyPressed;
 
-        // Must exist before anything below can raise BlockStateChanged/MuteStateChanged - both are
+        // Must exist before anything below can raise BlockStateChanged/IsMuted changes - both are
         // wired straight to RefreshIcon(), which touches _taskbarIcon.
         CreateTaskbarIcon();
 
-        _microphoneService.MuteStateChanged += (_, _) => RefreshIcon();
+        // Every mute path (settings checkbox, hotkey, tray menu, Windows Sound panel) ends up updating
+        // Microphone.IsMuted on the UI thread, so this is the one place the icon needs to follow it.
+        _mainViewModel.Microphone.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MicrophoneViewModel.IsMuted))
+                RefreshIcon();
+        };
         _mainViewModel.CameraBlock.BlockStateChanged += (_, _) => RefreshIcon();
+        _tarkovMatchWatcher.MatchFound += (_, _) => Dispatcher.BeginInvoke(() => NotifyTarkovMatchFound(isTest: false));
+        _mainViewModel.Tarkov.TestNotificationRequested += (_, _) => NotifyTarkovMatchFound(isTest: true);
 
         if (_settings.CameraBlockAutoApplyOnStartup)
             _mainViewModel.CameraBlock.ApplyConfiguredBlocks();
@@ -144,7 +159,6 @@ public partial class App : Application
         {
             case "MicMute":
                 _mainViewModel.Microphone.ToggleMute();
-                RefreshIcon();
                 break;
 
             case "VolumeUp":
@@ -170,7 +184,6 @@ public partial class App : Application
         muteItem.Click += (_, _) =>
         {
             _mainViewModel.Microphone.ToggleMute();
-            RefreshIcon();
         };
 
         var settingsItem = new MenuItem { Header = "Open Settings" };
@@ -225,6 +238,44 @@ public partial class App : Application
             $"CenterConsole: Microphone {(muted ? "Muted" : "Live")}, Camera {(cameraBlocked ? "Blocked" : "Enabled")}";
     }
 
+    private void NotifyTarkovMatchFound(bool isTest)
+    {
+        // MatchingCompleted is written once per match, but guard against a burst of duplicates anyway.
+        // Test clicks bypass the guard (and don't arm it) so they always fire.
+        if (!isTest)
+        {
+            if (DateTime.UtcNow - _lastMatchNotificationUtc < TimeSpan.FromSeconds(15))
+                return;
+            _lastMatchNotificationUtc = DateTime.UtcNow;
+        }
+
+        // The balloon's own sound is skipped (Windows silences it under Focus Assist's gaming rule, which
+        // is exactly when this matters); a system sound played directly isn't subject to that.
+        if (_settings.TarkovMatchPlaySound)
+            PlayMatchFoundSound();
+
+        // respectQuietTime: false so the toast still shows while a fullscreen game is focused.
+        _taskbarIcon.ShowNotification(
+            "Match found", isTest ? "Test notification from CenterConsole." : "Escape from Tarkov found a game.",
+            NotificationIcon.Info, sound: false, respectQuietTime: false);
+    }
+
+    private void PlayMatchFoundSound()
+    {
+        string wav = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Media", "Windows Notify Messaging.wav");
+
+        if (!File.Exists(wav))
+        {
+            SystemSounds.Exclamation.Play();
+            return;
+        }
+
+        // Kept in a field: SoundPlayer.Play() is asynchronous, and a collected player cuts the sound off.
+        _matchFoundSound ??= new SoundPlayer(wav);
+        _matchFoundSound.Play();
+    }
+
     private void ShowMainWindow()
     {
         _mainWindow.Show();
@@ -240,6 +291,8 @@ public partial class App : Application
         _currentTrayIcon?.Dispose();
         _microphoneService.Dispose();
         _appVolumeService.Dispose();
+        _tarkovMatchWatcher.Dispose();
+        _matchFoundSound?.Dispose();
         _mainWindow.Close();
         Shutdown();
     }

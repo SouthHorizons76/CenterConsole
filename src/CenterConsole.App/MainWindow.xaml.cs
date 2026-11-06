@@ -61,6 +61,22 @@ public partial class MainWindow : Window
         _viewModel.Microphone.ToggleMute();
     }
 
+    private void OnBrowseTarkovLogsClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "Select Escape from Tarkov's Logs folder (contains the log_* folders)",
+            InitialDirectory = _viewModel.Tarkov.EffectiveLogsFolder ?? string.Empty,
+        };
+        if (dialog.ShowDialog(this) == true)
+            _viewModel.Tarkov.SetLogsFolder(dialog.FolderName);
+    }
+
+    private void OnTestTarkovNotificationClick(object sender, RoutedEventArgs e)
+    {
+        _viewModel.Tarkov.SendTestNotification();
+    }
+
     private void OnMicMuteHotkeyCaptured(object? sender, HotkeyBinding binding)
     {
         TryApplyHotkey("MicMute", binding, _viewModel.Microphone.ApplyNewHotkey);

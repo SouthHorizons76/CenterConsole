@@ -28,4 +28,9 @@ public sealed class AppSettings
     public int AppVolumeStepPercent { get; set; } = 5;
 
     public bool RunAtStartup { get; set; }
+
+    public bool TarkovMatchNotificationsEnabled { get; set; } = true;
+    /// <summary>Tarkov's Logs folder; null means auto-detect from the launcher's install location.</summary>
+    public string? TarkovLogsFolder { get; set; }
+    public bool TarkovMatchPlaySound { get; set; } = true;
 }
