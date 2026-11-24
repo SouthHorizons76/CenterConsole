@@ -10,6 +10,7 @@
     <Window.Resources>
         <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
         <conv:BoolToInactiveOpacityConverter x:Key="BoolToInactiveOpacity"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
     </Window.Resources>
     <DockPanel>
     <TextBlock x:Name="VersionLabel" DockPanel.Dock="Bottom"
@@ -159,6 +160,82 @@
                 <TextBlock Margin="0,8,0,0" Foreground="Gray" TextWrapping="Wrap" MaxWidth="450" HorizontalAlignment="Left"
                            Text="Detected automatically from the BSG launcher install. To find it manually: BsgLauncher, Game Settings, Logs."/>
             </StackPanel>
+        </TabItem>
+
+        <TabItem Header="Compressor">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="16">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Status: " FontWeight="Bold"/>
+                    <TextBlock Text="{Binding TarkovAudio.StatusText}"/>
+                </StackPanel>
+
+                <CheckBox Content="Enable compressor" Margin="0,12,0,0"
+                          IsChecked="{Binding TarkovAudio.Enabled}"
+                          IsEnabled="{Binding TarkovAudio.IsSetUp}"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                    <TextBlock Text="On/off hotkey:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <views:HotkeyCaptureControl BindingValue="{Binding TarkovAudio.Hotkey, Mode=TwoWay}"
+                                                 HotkeyCaptured="OnTarkovAudioHotkeyCaptured"/>
+                </StackPanel>
+
+                <TextBlock Text="Tuning" FontWeight="Bold" Margin="0,16,0,4"/>
+                <Grid IsEnabled="{Binding TarkovAudio.IsSetUp}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="260"/>
+                        <ColumnDefinition Width="80"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Quiet sound boost" VerticalAlignment="Center"
+                               ToolTip="How much footsteps and other quiet sounds can be raised."/>
+                    <Slider Grid.Column="1" Minimum="0" Maximum="18" TickFrequency="1" IsSnapToTickEnabled="True"
+                            Value="{Binding TarkovAudio.BoostDb}" Margin="0,4"/>
+                    <TextBlock Grid.Column="2" Text="{Binding TarkovAudio.BoostText}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+
+                    <TextBlock Grid.Row="1" Text="Loud sound ceiling" VerticalAlignment="Center"
+                               ToolTip="Sounds louder than this (gunfire, explosions) are squashed. Lower = quieter guns."/>
+                    <Slider Grid.Row="1" Grid.Column="1" Minimum="6" Maximum="36" TickFrequency="1" IsSnapToTickEnabled="True"
+                            Value="{Binding TarkovAudio.LoudThresholdDb}" Margin="0,4"/>
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding TarkovAudio.LoudThresholdText}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+
+                    <TextBlock Grid.Row="2" Text="Footstep clarity (3 kHz)" VerticalAlignment="Center"
+                               ToolTip="EQ boost in the range where footstep and surface detail sits."/>
+                    <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True"
+                            Value="{Binding TarkovAudio.PresenceDb}" Margin="0,4"/>
+                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding TarkovAudio.PresenceText}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                </Grid>
+
+                <TextBlock Text="Setup" FontWeight="Bold" Margin="0,16,0,4"/>
+                <TextBlock Text="{Binding TarkovAudio.SetupText}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left"/>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="Install plugin" Padding="10,2"
+                            IsEnabled="{Binding TarkovAudio.CanInstall}"
+                            Click="OnInstallTarkovAudioClick"/>
+                    <Button Content="Re-check" Padding="10,2" Margin="8,0,0,0"
+                            Click="OnRecheckTarkovAudioClick"/>
+                    <Button Content="Restart audio engine" Padding="10,2" Margin="8,0,0,0"
+                            IsEnabled="{Binding TarkovAudio.CanRestartAudio}"
+                            ToolTip="Restarts the Windows Audio service so every stream picks up the current plugin version. Close games first: they may lose sound."
+                            Click="OnRestartAudioEngineClick"/>
+                    <Button Content="Get Equalizer APO" Padding="10,2" Margin="8,0,0,0"
+                            Visibility="{Binding TarkovAudio.IsEqualizerApoMissing, Converter={StaticResource BoolToVisibility}}"
+                            Click="OnGetEqualizerApoClick"/>
+                </StackPanel>
+                <TextBlock Text="{Binding TarkovAudio.Notice}" TextWrapping="Wrap"
+                           MaxWidth="520" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                <TextBlock Text="{Binding TarkovAudio.LastError}" Foreground="DarkRed" TextWrapping="Wrap"
+                           MaxWidth="520" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                <TextBlock Margin="0,8,0,0" Foreground="Gray" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left"
+                           Text="Runs inside Equalizer APO on your existing headset device: no extra audio devices to switch to. It processes everything playing on that device, and it only lives in Windows' audio engine, never in the game."/>
+            </StackPanel>
+            </ScrollViewer>
         </TabItem>
 
     </TabControl>

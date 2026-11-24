@@ -82,7 +82,7 @@ public partial class App : Application
 
         _mainViewModel = new MainViewModel(
             _microphoneService, _cameraBlockService, _appVolumeService, _elevationService, _startupService,
-            _tarkovMatchWatcher, _settings, SaveSettings);
+            _tarkovMatchWatcher, new TarkovAudioService(), _settings, SaveSettings);
 
         // Reconciles the scheduled task with the persisted setting on every launch (e.g. if the task
         // was removed externally, or this is a fresh settings.json from a copied install).
@@ -151,6 +151,7 @@ public partial class App : Application
         _hotkeyService.TryRegister("MicMute", _settings.MicMuteHotkey);
         _hotkeyService.TryRegister("VolumeUp", _settings.AppVolumeUpHotkey);
         _hotkeyService.TryRegister("VolumeDown", _settings.AppVolumeDownHotkey);
+        _hotkeyService.TryRegister("TarkovAudio", _settings.TarkovAudioHotkey);
     }
 
     private void OnHotkeyPressed(object? sender, string actionKey)
@@ -167,6 +168,10 @@ public partial class App : Application
 
             case "VolumeDown":
                 _mainViewModel.AppVolume.AdjustTargetVolume(-_settings.AppVolumeStepPercent / 100f);
+                break;
+
+            case "TarkovAudio":
+                _mainViewModel.TarkovAudio.Toggle();
                 break;
         }
     }
@@ -186,6 +191,9 @@ public partial class App : Application
             _mainViewModel.Microphone.ToggleMute();
         };
 
+        var tarkovAudioItem = new MenuItem { Header = "Compressor", IsCheckable = true };
+        tarkovAudioItem.Click += (_, _) => _mainViewModel.TarkovAudio.Toggle();
+
         var settingsItem = new MenuItem { Header = "Open Settings" };
         settingsItem.Click += (_, _) => ShowMainWindow();
 
@@ -193,8 +201,14 @@ public partial class App : Application
         exitItem.Click += (_, _) => ExitApplication();
 
         var contextMenu = new ContextMenu();
-        contextMenu.Opened += (_, _) => muteItem.IsChecked = _mainViewModel.Microphone.IsMuted;
+        contextMenu.Opened += (_, _) =>
+        {
+            muteItem.IsChecked = _mainViewModel.Microphone.IsMuted;
+            tarkovAudioItem.IsChecked = _mainViewModel.TarkovAudio.Enabled;
+            tarkovAudioItem.IsEnabled = _mainViewModel.TarkovAudio.IsSetUp;
+        };
         contextMenu.Items.Add(muteItem);
+        contextMenu.Items.Add(tarkovAudioItem);
         contextMenu.Items.Add(settingsItem);
         contextMenu.Items.Add(new Separator());
 
@@ -292,6 +306,7 @@ public partial class App : Application
         _microphoneService.Dispose();
         _appVolumeService.Dispose();
         _tarkovMatchWatcher.Dispose();
+        _mainViewModel.TarkovAudio.Shutdown();
         _matchFoundSound?.Dispose();
         _mainWindow.Close();
         Shutdown();

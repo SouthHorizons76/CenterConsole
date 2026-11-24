@@ -82,6 +82,37 @@ public partial class MainWindow : Window
         TryApplyHotkey("MicMute", binding, _viewModel.Microphone.ApplyNewHotkey);
     }
 
+    private void OnTarkovAudioHotkeyCaptured(object? sender, HotkeyBinding binding)
+    {
+        TryApplyHotkey("TarkovAudio", binding, _viewModel.TarkovAudio.ApplyNewHotkey);
+    }
+
+    private void OnInstallTarkovAudioClick(object sender, RoutedEventArgs e)
+    {
+        _viewModel.TarkovAudio.Install();
+    }
+
+    private void OnRecheckTarkovAudioClick(object sender, RoutedEventArgs e)
+    {
+        _viewModel.TarkovAudio.Recheck();
+    }
+
+    private async void OnRestartAudioEngineClick(object sender, RoutedEventArgs e)
+    {
+        var answer = MessageBox.Show(
+            "This restarts the Windows Audio service so every app picks up the current compressor plugin.\n\n" +
+            "All sound stops for a moment, and games that are running may lose sound until you restart them. Continue?",
+            "Restart audio engine", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (answer == MessageBoxResult.OK)
+            await _viewModel.TarkovAudio.RestartAudioEngineAsync();
+    }
+
+    private void OnGetEqualizerApoClick(object sender, RoutedEventArgs e)
+    {
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+            "https://sourceforge.net/projects/equalizerapo/") { UseShellExecute = true });
+    }
+
     private void OnVolumeUpHotkeyCaptured(object? sender, HotkeyBinding binding)
     {
         TryApplyHotkey("VolumeUp", binding, _viewModel.AppVolume.ApplyNewVolumeUpHotkey);
@@ -94,6 +125,14 @@ public partial class MainWindow : Window
 
     private void TryApplyHotkey(string actionKey, HotkeyBinding binding, Action<HotkeyBinding> apply)
     {
+        if (!binding.IsAssigned)
+        {
+            // Esc in the capture control: drop the hotkey entirely.
+            _hotkeyService.Unregister(actionKey);
+            apply(binding);
+            return;
+        }
+
         if (_hotkeyService.TryRegister(actionKey, binding))
         {
             apply(binding);

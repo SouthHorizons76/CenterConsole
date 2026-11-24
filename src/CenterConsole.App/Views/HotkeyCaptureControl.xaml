@@ -6,5 +6,6 @@
             Padding="8,4"
             Click="OnClick"
             PreviewKeyDown="OnPreviewKeyDown"
-            ToolTip="Click, then press the desired key combination"/>
+            LostKeyboardFocus="OnLostKeyboardFocus"
+            ToolTip="Click, then press the desired key combination. Esc removes the hotkey."/>
 </UserControl>

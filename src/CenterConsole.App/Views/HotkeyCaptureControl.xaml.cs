@@ -48,7 +48,7 @@ public partial class HotkeyCaptureControl : UserControl
     private void OnClick(object sender, RoutedEventArgs e)
     {
         _isCapturing = true;
-        CaptureButton.Content = "Press a key combo...";
+        CaptureButton.Content = "Press a key combo (Esc = none)";
         CaptureButton.Focus();
     }
 
@@ -65,8 +65,10 @@ public partial class HotkeyCaptureControl : UserControl
 
         if (key == Key.Escape)
         {
+            // Esc unbinds: an unassigned binding (VirtualKey 0) tells the caller to drop the hotkey.
             _isCapturing = false;
             UpdateButtonText();
+            HotkeyCaptured?.Invoke(this, new HotkeyBinding());
             return;
         }
 
@@ -85,6 +87,16 @@ public partial class HotkeyCaptureControl : UserControl
         _isCapturing = false;
         UpdateButtonText();
         HotkeyCaptured?.Invoke(this, binding);
+    }
+
+    private void OnLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        // Clicking elsewhere cancels a capture in progress, leaving the binding unchanged.
+        if (!_isCapturing)
+            return;
+
+        _isCapturing = false;
+        UpdateButtonText();
     }
 
     private static bool IsModifierOnly(Key key) => key is

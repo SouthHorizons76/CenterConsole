@@ -33,4 +33,16 @@ public sealed class AppSettings
     /// <summary>Tarkov's Logs folder; null means auto-detect from the launcher's install location.</summary>
     public string? TarkovLogsFolder { get; set; }
     public bool TarkovMatchPlaySound { get; set; } = true;
+
+    /// <summary>Master switch for the footstep/gunfire audio processing (Equalizer APO plugin).</summary>
+    public bool TarkovAudioEnabled { get; set; } = true;
+    public int TarkovAudioBoostDb { get; set; } = 10;
+    /// <summary>Loud sounds above -N dBFS get compressed; higher N = gunfire squashed harder.</summary>
+    public int TarkovAudioLoudThresholdDb { get; set; } = 18;
+    public int TarkovAudioPresenceDb { get; set; } = 3;
+    public HotkeyBinding TarkovAudioHotkey { get; set; } = new()
+    {
+        Modifiers = HotkeyModifiers.Control | HotkeyModifiers.Alt,
+        VirtualKey = 0x46, // 'F' (footsteps)
+    };
 }

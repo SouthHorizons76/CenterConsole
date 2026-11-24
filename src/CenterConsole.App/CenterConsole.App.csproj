@@ -11,7 +11,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>CenterConsole</AssemblyName>
     <RootNamespace>CenterConsole.App</RootNamespace>
-    <Version>1.0.3</Version>
+    <Version>1.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,5 +22,24 @@
   <ItemGroup>
     <ProjectReference Include="..\CenterConsole.Core\CenterConsole.Core.csproj" />
   </ItemGroup>
+
+  <!-- TarkovAudio.dll: native VST plugin hosted by Equalizer APO. Built with MSVC via build.cmd and shipped
+       next to CenterConsole.exe, which installs it into Equalizer APO from the Compressor tab. -->
+  <PropertyGroup>
+    <TarkovAudioDir>$(MSBuildThisFileDirectory)..\..\native\TarkovAudio\</TarkovAudioDir>
+    <TarkovAudioDll>$(TarkovAudioDir)bin\TarkovAudio.dll</TarkovAudioDll>
+  </PropertyGroup>
+
+  <Target Name="BuildTarkovAudio" BeforeTargets="BeforeBuild"
+          Inputs="$(TarkovAudioDir)TarkovAudio.cpp;$(TarkovAudioDir)TarkovDsp.h;$(TarkovAudioDir)vst2_min.h"
+          Outputs="$(TarkovAudioDll)">
+    <Exec Command="&quot;$(TarkovAudioDir)build.cmd&quot;" ContinueOnError="WarnAndContinue" />
+  </Target>
+
+  <Target Name="IncludeTarkovAudio" AfterTargets="BuildTarkovAudio" Condition="Exists('$(TarkovAudioDll)')">
+    <ItemGroup>
+      <None Include="$(TarkovAudioDll)" Link="TarkovAudio.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 
 </Project>

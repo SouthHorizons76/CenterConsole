@@ -14,6 +14,7 @@ public sealed partial class MainViewModel : ObservableObject
     public CameraBlockViewModel CameraBlock { get; }
     public AppVolumeViewModel AppVolume { get; }
     public TarkovViewModel Tarkov { get; }
+    public TarkovAudioViewModel TarkovAudio { get; }
 
     [ObservableProperty]
     private bool runAtStartup;
@@ -25,6 +26,7 @@ public sealed partial class MainViewModel : ObservableObject
         IElevationService elevationService,
         IStartupService startupService,
         ITarkovMatchWatcher tarkovMatchWatcher,
+        ITarkovAudioService tarkovAudioService,
         AppSettings settings,
         Action saveSettings)
     {
@@ -36,6 +38,7 @@ public sealed partial class MainViewModel : ObservableObject
         CameraBlock = new CameraBlockViewModel(cameraBlockService, elevationService, settings, saveSettings);
         AppVolume = new AppVolumeViewModel(appVolumeService, settings, saveSettings);
         Tarkov = new TarkovViewModel(tarkovMatchWatcher, settings, saveSettings);
+        TarkovAudio = new TarkovAudioViewModel(tarkovAudioService, elevationService, settings, saveSettings);
 
         runAtStartup = settings.RunAtStartup;
     }
